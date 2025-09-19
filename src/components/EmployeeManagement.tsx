@@ -20,6 +20,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -29,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 // =======================
 // Types
@@ -58,6 +69,7 @@ const useEmployees = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const base = 'http://localhost:5000/api/users';
 
   const fetchEmployees = async () => {
@@ -67,7 +79,13 @@ const useEmployees = () => {
       if (!res.ok) throw new Error('Unable to fetch employees.');
       setEmployees(await res.json());
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: message,
+      });
     } finally {
       setLoading(false);
     }
@@ -77,11 +95,24 @@ const useEmployees = () => {
     fetchEmployees();
   }, []);
 
-  const wrap = async <T,>(fn: () => Promise<T>) => {
+  const wrap = async <T,>(fn: () => Promise<T>, successMessage?: string) => {
     try {
-      return await fn();
+      const result = await fn();
+      if (successMessage) {
+        toast({
+          title: "Success",
+          description: successMessage,
+        });
+      }
+      return result;
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: message,
+      });
       throw e;
     }
   };
@@ -96,7 +127,7 @@ const useEmployees = () => {
       if (!res.ok) throw new Error('Failed to add employee.');
       const created = await res.json();
       setEmployees((prev) => [...prev, created]);
-    });
+    }, 'Employee added successfully');
 
   const updateEmployee = (emp: Employee) =>
     wrap(async () => {
@@ -108,14 +139,14 @@ const useEmployees = () => {
       if (!res.ok) throw new Error('Failed to update employee.');
       const updated = await res.json();
       setEmployees((prev) => prev.map((e) => (e.email === emp.email ? updated : e)));
-    });
+    }, 'Employee updated successfully');
 
   const deleteEmployee = (email: string) =>
     wrap(async () => {
       const res = await fetch(`${base}/${encodeURIComponent(email)}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete employee.');
       setEmployees((prev) => prev.filter((e) => e.email !== email));
-    });
+    }, 'Employee deleted successfully');
 
   return { employees, loading, error, setError, addEmployee, updateEmployee, deleteEmployee };
 };
@@ -127,12 +158,12 @@ const EmployeeTable = ({
   employees,
   isLoading,
   onEdit,
-  onDelete,
+  onDeleteConfirm,
 }: {
   employees: Employee[];
   isLoading: boolean;
   onEdit: (e: Employee) => void;
-  onDelete: (email: string) => void;
+  onDeleteConfirm: (email: string, name: string) => void;
 }) => (
   <Card className="overflow-hidden">
     <Table>
@@ -176,7 +207,7 @@ const EmployeeTable = ({
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => onDelete(emp.email)}
+                  onClick={() => onDeleteConfirm(emp.email, emp.name)}
                 >
                   Delete
                 </Button>
@@ -265,6 +296,11 @@ const EmployeeManagement = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ 
+    open: boolean; 
+    email: string; 
+    name: string; 
+  }>({ open: false, email: '', name: '' });
 
   const handleSave = async (emp: Employee) => {
     try {
@@ -273,7 +309,20 @@ const EmployeeManagement = () => {
       setDialogOpen(false);
       setCurrentEmployee(null);
     } catch {
-      /* error already set in hook */
+      /* error already handled in hook */
+    }
+  };
+
+  const handleDeleteConfirm = (email: string, name: string) => {
+    setDeleteDialog({ open: true, email, name });
+  };
+
+  const handleDeleteExecute = async () => {
+    try {
+      await deleteEmployee(deleteDialog.email);
+      setDeleteDialog({ open: false, email: '', name: '' });
+    } catch {
+      /* error already handled in hook */
     }
   };
 
@@ -306,7 +355,7 @@ const EmployeeManagement = () => {
               setCurrentEmployee(emp);
               setDialogOpen(true);
             }}
-            onDelete={deleteEmployee}
+            onDeleteConfirm={handleDeleteConfirm}
           />
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -325,6 +374,23 @@ const EmployeeManagement = () => {
               />
             </DialogContent>
           </Dialog>
+
+          <AlertDialog open={deleteDialog.open} onOpenChange={(open) => 
+            setDeleteDialog({ ...deleteDialog, open })
+          }>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the employee "{deleteDialog.name}" and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteExecute}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </main>
 
