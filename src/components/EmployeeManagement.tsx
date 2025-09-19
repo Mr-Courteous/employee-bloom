@@ -224,7 +224,11 @@ const EmployeeTable = ({
             </TableCell>
           </TableRow>
         ) : (
+<<<<<<< HEAD
           employees.map((emp) => (
+=======
+          employees.map((emp, index) => (
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
             <TableRow key={emp.id} className="border-slate-200 dark:border-slate-600 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-all duration-200">
               <TableCell className="font-inter font-medium text-slate-900 dark:text-white">
                 <div className="flex items-center space-x-3">
@@ -237,10 +241,17 @@ const EmployeeTable = ({
               <TableCell className="font-inter text-slate-600 dark:text-slate-400">{emp.email}</TableCell>
               <TableCell className="font-inter text-slate-600 dark:text-slate-400">{emp.role}</TableCell>
               <TableCell>
+<<<<<<< HEAD
                 <Badge
                   variant={emp.status === 'Active' ? 'default' : 'secondary'}
                   className={emp.status === 'Active'
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-200 font-inter font-medium dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700'
+=======
+                <Badge 
+                  variant={emp.status === 'Active' ? 'default' : 'secondary'} 
+                  className={emp.status === 'Active' 
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 font-inter font-medium dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700' 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
                     : 'bg-slate-100 text-slate-700 border-slate-200 font-inter font-medium dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'
                   }
                 >
@@ -250,9 +261,15 @@ const EmployeeTable = ({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-2">
+<<<<<<< HEAD
                   <Button
                     variant="outline"
                     size="sm"
+=======
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
                     onClick={() => onEdit(emp)}
                     className="font-inter font-medium border-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 dark:border-slate-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-300"
                   >
@@ -314,10 +331,17 @@ const EmployeeForm = ({
             </svg>
             Full Name
           </Label>
+<<<<<<< HEAD
           <Input
             name="name"
             value={form.name}
             onChange={handleChange}
+=======
+          <Input 
+            name="name" 
+            value={form.name} 
+            onChange={handleChange} 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
             placeholder="Enter employee's full name"
             className="font-inter bg-white/80 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all duration-300"
           />
@@ -331,11 +355,19 @@ const EmployeeForm = ({
             </svg>
             Email Address
           </Label>
+<<<<<<< HEAD
           <Input
             name="email"
             type="email"
             value={form.email}
             onChange={handleChange}
+=======
+          <Input 
+            name="email" 
+            type="email"
+            value={form.email} 
+            onChange={handleChange} 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
             placeholder="employee@company.com"
             className="font-inter bg-white/80 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all duration-300"
           />
@@ -349,10 +381,17 @@ const EmployeeForm = ({
             </svg>
             Job Role
           </Label>
+<<<<<<< HEAD
           <Input
             name="role"
             value={form.role}
             onChange={handleChange}
+=======
+          <Input 
+            name="role" 
+            value={form.role} 
+            onChange={handleChange} 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
             placeholder="e.g., Software Engineer, Product Manager"
             className="font-inter bg-white/80 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all duration-300"
           />
@@ -390,16 +429,28 @@ const EmployeeForm = ({
           </Select>
         </div>
       </div>
+<<<<<<< HEAD
 
       <DialogFooter className="gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
         <Button
           onClick={onCancel}
           variant="outline"
+=======
+      
+      <DialogFooter className="gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+        <Button 
+          onClick={onCancel}
+          variant="outline" 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
           className="font-inter font-medium border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800 px-6"
         >
           Cancel
         </Button>
+<<<<<<< HEAD
         <Button
+=======
+        <Button 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
           onClick={handleSubmit}
           className="font-inter font-medium bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
         >
@@ -429,6 +480,7 @@ const EmployeeManagement = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+<<<<<<< HEAD
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     email: string;
@@ -442,6 +494,13 @@ const EmployeeManagement = () => {
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+=======
+  const [deleteDialog, setDeleteDialog] = useState<{ 
+    open: boolean; 
+    email: string; 
+    name: string; 
+  }>({ open: false, email: '', name: '' });
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
 
   const handleSave = async (emp: Employee) => {
     try {
@@ -497,11 +556,16 @@ const EmployeeManagement = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           {error && <ErrorBanner message={error} onClose={() => setError(null)} />}
 
+<<<<<<< HEAD
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+=======
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
             <div className="space-y-2">
               <h2 className="text-4xl font-playfair font-bold text-slate-900 dark:text-white tracking-tight">Employee Management</h2>
               <p className="text-slate-600 dark:text-slate-400 font-inter">Streamline your team operations</p>
             </div>
+<<<<<<< HEAD
             <div className="flex items-center space-x-4 w-full max-w-sm">
               <input
                 type="text"
@@ -520,6 +584,14 @@ const EmployeeManagement = () => {
                 Add Employee
               </Button>
             </div>
+=======
+            <Button onClick={() => setDialogOpen(true)} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add Employee
+            </Button>
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
           </div>
 
           <EmployeeTable
@@ -553,7 +625,11 @@ const EmployeeManagement = () => {
             </DialogContent>
           </Dialog>
 
+<<<<<<< HEAD
           <AlertDialog open={deleteDialog.open} onOpenChange={(open) =>
+=======
+          <AlertDialog open={deleteDialog.open} onOpenChange={(open) => 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
             setDeleteDialog({ ...deleteDialog, open })
           }>
             <AlertDialogContent className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-0 shadow-2xl ring-1 ring-red-200/50 dark:ring-red-700/50">
@@ -574,7 +650,11 @@ const EmployeeManagement = () => {
                 <AlertDialogCancel className="font-inter font-medium border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
                   Cancel
                 </AlertDialogCancel>
+<<<<<<< HEAD
                 <AlertDialogAction
+=======
+                <AlertDialogAction 
+>>>>>>> 69049b30e7972e77c25c393f438794e700f242f5
                   onClick={handleDeleteExecute}
                   className="bg-red-600 hover:bg-red-700 text-white font-inter font-medium"
                 >
