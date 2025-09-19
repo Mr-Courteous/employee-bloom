@@ -1,4 +1,4 @@
-import { EmployeeManagement } from '@/components/EmployeeManagement';
+import EmployeeManagement from '@/components/EmployeeManagement';
 
 const Index = () => {
   return <EmployeeManagement />;

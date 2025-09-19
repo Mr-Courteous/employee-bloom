@@ -1,319 +1,340 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { EmployeeForm } from './EmployeeForm';
-import { EmployeeTable } from './EmployeeTable';
-import { Employee, EmployeeFormData, DEPARTMENTS } from '@/types/employee';
-import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Filter, Users } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-export const EmployeeManagement = () => {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const { toast } = useToast();
+// =======================
+// Types
+// =======================
+interface Employee {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  status: 'Active' | 'Inactive';
+}
 
-    const API_URL = 'http://localhost:5000/api/users';
+// =======================
+// Small helpers
+// =======================
+const ErrorBanner = ({ message, onClose }: { message: string; onClose: () => void }) => (
+  <div className="bg-destructive/15 text-destructive px-4 py-3 rounded mb-4 flex justify-between">
+    <span>{message}</span>
+    <button onClick={onClose} className="font-bold">×</button>
+  </div>
+);
 
-    // A reusable function to fetch employees from the API
-    const fetchAllEmployees = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const response = await fetch(API_URL);
-            if (!response.ok) {
-                throw new Error('Failed to fetch employees');
-            }
-            const data: Employee[] = await response.json();
-            setEmployees(data);
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to load employee data.',
-                variant: 'destructive',
-            });
-            console.error('Error fetching employees:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [toast]);
+// =======================
+// Hook for API sync
+// =======================
+const useEmployees = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const base = 'http://localhost:5000/api/users';
 
-    // Fetch employees on component mount
-    useEffect(() => {
-        fetchAllEmployees();
-    }, [fetchAllEmployees]);
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(base);
+      if (!res.ok) throw new Error('Unable to fetch employees.');
+      setEmployees(await res.json());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Filter employees based on search term and department
-    const filteredEmployees = useMemo(() => {
-        return employees.filter((employee) => {
-            const matchesSearch =
-                employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                employee.role.toLowerCase().includes(searchTerm.toLowerCase());
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
-            const matchesDepartment =
-                departmentFilter === 'all' || employee.department === departmentFilter;
+  const wrap = async <T,>(fn: () => Promise<T>) => {
+    try {
+      return await fn();
+    } catch (e) {
+      setError((e as Error).message);
+      throw e;
+    }
+  };
 
-            return matchesSearch && matchesDepartment;
-        });
-    }, [employees, searchTerm, departmentFilter]);
+  const addEmployee = (emp: Employee) =>
+    wrap(async () => {
+      const res = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emp),
+      });
+      if (!res.ok) throw new Error('Failed to add employee.');
+      const created = await res.json();
+      setEmployees((prev) => [...prev, created]);
+    });
 
-    const handleAddEmployee = async (formData: EmployeeFormData) => {
-        setIsLoading(true);
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
+  const updateEmployee = (emp: Employee) =>
+    wrap(async () => {
+      const res = await fetch(`${base}/${encodeURIComponent(emp.email)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emp),
+      });
+      if (!res.ok) throw new Error('Failed to update employee.');
+      const updated = await res.json();
+      setEmployees((prev) => prev.map((e) => (e.email === emp.email ? updated : e)));
+    });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to add employee');
-            }
+  const deleteEmployee = (email: string) =>
+    wrap(async () => {
+      const res = await fetch(`${base}/${encodeURIComponent(email)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete employee.');
+      setEmployees((prev) => prev.filter((e) => e.email !== email));
+    });
 
-            // After a successful POST, re-fetch all employees to ensure state is synchronized
-            await fetchAllEmployees();
-
-            setIsFormOpen(false);
-            toast({
-                title: 'Employee Added',
-                description: `${formData.name} has been successfully added to the team.`,
-            });
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: error instanceof Error ? error.message : 'An unexpected error occurred.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleEditEmployee = async (formData: EmployeeFormData) => {
-        if (!editingEmployee) return;
-
-        setIsLoading(true);
-        try {
-            const response = await fetch(`${API_URL}/${editingEmployee.email}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to update employee');
-            }
-
-            // After a successful PUT, re-fetch all employees to ensure state is synchronized
-            await fetchAllEmployees();
-
-            setEditingEmployee(null);
-            setIsFormOpen(false);
-            toast({
-                title: 'Employee Updated',
-                description: `${formData.name}'s information has been updated successfully.`,
-            });
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: error instanceof Error ? error.message : 'An unexpected error occurred.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleDeleteEmployee = async (employeeId: string) => {
-        const employeeToDelete = employees.find(emp => emp.id === employeeId);
-        if (!employeeToDelete) {
-            toast({
-                title: 'Error',
-                description: 'Employee not found in local state.',
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        try {
-            // Use the employee's unique email to make the DELETE request
-            const response = await fetch(`${API_URL}/${employeeToDelete.email}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to delete employee');
-            }
-
-            // Re-fetch all data to get the updated list from the server
-            await fetchAllEmployees();
-
-            toast({
-                title: 'Employee Deleted',
-                description: `${employeeToDelete.name} has been removed from the team.`,
-                variant: 'destructive',
-            });
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: error instanceof Error ? error.message : 'An unexpected error occurred.',
-                variant: 'destructive',
-            });
-        }
-    };
-
-    const openAddForm = () => {
-        setEditingEmployee(null);
-        setIsFormOpen(true);
-    };
-
-    const openEditForm = (employee: Employee) => {
-        setEditingEmployee(employee);
-        setIsFormOpen(true);
-    };
-
-    const closeForm = () => {
-        setIsFormOpen(false);
-        setEditingEmployee(null);
-    };
-
-    const departmentCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        employees.forEach(employee => {
-            counts[employee.department] = (counts[employee.department] || 0) + 1;
-        });
-        return counts;
-    }, [employees]);
-
-    return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
-            <div className="bg-gradient-hero text-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-                    <div className="text-center">
-                        <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-                            Employee Management
-                        </h1>
-                        <p className="text-xl text-white/90 max-w-2xl mx-auto">
-                            Streamline your team operations with our modern employee management system
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <Card className="bg-card border-border shadow-custom-md">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-card-foreground">
-                                <Users className="h-5 w-5 text-primary" />
-                                Total Employees
-                            </CardTitle>
-                            <CardDescription className="text-3xl font-bold text-primary">
-                                {employees.length}
-                            </CardDescription>
-                        </CardHeader>
-                    </Card>
-
-                    <Card className="bg-card border-border shadow-custom-md">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-card-foreground">
-                                <Filter className="h-5 w-5 text-accent" />
-                                Departments
-                            </CardTitle>
-                            <CardDescription className="text-3xl font-bold text-accent">
-                                {Object.keys(departmentCounts).length}
-                            </CardDescription>
-                        </CardHeader>
-                    </Card>
-
-                    <Card className="bg-card border-border shadow-custom-md">
-                        <CardHeader>
-                            <CardTitle className="text-card-foreground">Top Departments</CardTitle>
-                            <CardDescription className="space-y-2">
-                                {Object.entries(departmentCounts)
-                                    .sort(([, a], [, b]) => b - a)
-                                    .slice(0, 3)
-                                    .map(([dept, count]) => (
-                                        <div key={dept} className="flex justify-between items-center">
-                                            <span className="text-sm">{dept}</span>
-                                            <Badge variant="secondary">{count}</Badge>
-                                        </div>
-                                    ))}
-                            </CardDescription>
-                        </CardHeader>
-                    </Card>
-                </div>
-
-                {/* Controls */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        <Input
-                            placeholder="Search employees by name, email, or role..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                        />
-                    </div>
-
-                    <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                        <SelectTrigger className="w-full sm:w-48">
-                            <SelectValue placeholder="Filter by department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Departments</SelectItem>
-                            {DEPARTMENTS.map((dept) => (
-                                <SelectItem key={dept} value={dept}>
-                                    {dept}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    <Button onClick={openAddForm} variant="gradient" size="lg" className="sm:w-auto">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Employee
-                    </Button>
-                </div>
-
-                {/* Results Summary */}
-                <div className="mb-6">
-                    <p className="text-muted-foreground">
-                        Showing {filteredEmployees.length} of {employees.length} employees
-                        {departmentFilter !== 'all' && ` in ${departmentFilter}`}
-                        {searchTerm && ` matching "${searchTerm}"`}
-                    </p>
-                </div>
-
-                {/* Employee Table */}
-                <EmployeeTable
-                    employees={filteredEmployees}
-                    onEdit={openEditForm}
-                    onDelete={handleDeleteEmployee}
-                    isLoading={isLoading}
-                />
-            </div>
-
-            {/* Employee Form Modal */}
-            <EmployeeForm
-                isOpen={isFormOpen}
-                onClose={closeForm}
-                onSubmit={editingEmployee ? handleEditEmployee : handleAddEmployee}
-                employee={editingEmployee}
-                isLoading={isLoading}
-            />
-        </div>
-    );
+  return { employees, loading, error, setError, addEmployee, updateEmployee, deleteEmployee };
 };
+
+// =======================
+// Employee Table
+// =======================
+const EmployeeTable = ({
+  employees,
+  isLoading,
+  onEdit,
+  onDelete,
+}: {
+  employees: Employee[];
+  isLoading: boolean;
+  onEdit: (e: Employee) => void;
+  onDelete: (email: string) => void;
+}) => (
+  <Card className="overflow-hidden">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isLoading ? (
+          <TableRow>
+            <TableCell colSpan={5} className="text-center">
+              Loading…
+            </TableCell>
+          </TableRow>
+        ) : employees.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={5} className="text-center">
+              No employees found.
+            </TableCell>
+          </TableRow>
+        ) : (
+          employees.map((emp) => (
+            <TableRow key={emp.id}>
+              <TableCell>{emp.name}</TableCell>
+              <TableCell>{emp.email}</TableCell>
+              <TableCell>{emp.role}</TableCell>
+              <TableCell>
+                <Badge variant={emp.status === 'Active' ? 'default' : 'secondary'}>
+                  {emp.status}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right space-x-2">
+                <Button variant="outline" size="sm" onClick={() => onEdit(emp)}>
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => onDelete(emp.email)}
+                >
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  </Card>
+);
+
+// =======================
+// Employee Form
+// =======================
+const EmployeeForm = ({
+  employee,
+  onSave,
+  onCancel,
+}: {
+  employee: Employee | null;
+  onSave: (e: Employee) => void;
+  onCancel: () => void;
+}) => {
+  const [form, setForm] = useState<Employee>(
+    employee ?? { id: 0, name: '', email: '', role: '', status: 'Active' }
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = () => onSave(form);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Name</Label>
+        <Input name="name" value={form.name} onChange={handleChange} />
+      </div>
+      <div>
+        <Label>Email</Label>
+        <Input name="email" value={form.email} onChange={handleChange} />
+      </div>
+      <div>
+        <Label>Role</Label>
+        <Input name="role" value={form.role} onChange={handleChange} />
+      </div>
+      <div>
+        <Label>Status</Label>
+        <Select
+          value={form.status}
+          onValueChange={(val) => setForm({ ...form, status: val as any })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <DialogFooter>
+        <Button onClick={handleSubmit}>Save</Button>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+};
+
+// =======================
+// Main Component
+// =======================
+const EmployeeManagement = () => {
+  const {
+    employees,
+    loading,
+    error,
+    setError,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+  } = useEmployees();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+
+  const handleSave = async (emp: Employee) => {
+    try {
+      if (emp.id) await updateEmployee(emp);
+      else await addEmployee(emp);
+      setDialogOpen(false);
+      setCurrentEmployee(null);
+    } catch {
+      /* error already set in hook */
+    }
+  };
+
+  const goToLogin = () => (window.location.href = '/login');
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="bg-primary text-primary-foreground p-4 shadow">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
+          <h1 className="text-xl font-bold">Company Dashboard</h1>
+          <Button variant="secondary" onClick={goToLogin}>
+            Login
+          </Button>
+        </div>
+      </header>
+
+      <main className="flex-1 p-8">
+        <div className="max-w-5xl mx-auto">
+          {error && <ErrorBanner message={error} onClose={() => setError(null)} />}
+
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-3xl font-bold">Employee Management</h2>
+            <Button onClick={() => setDialogOpen(true)}>Add Employee</Button>
+          </div>
+
+          <EmployeeTable
+            employees={employees}
+            isLoading={loading}
+            onEdit={(emp) => {
+              setCurrentEmployee(emp);
+              setDialogOpen(true);
+            }}
+            onDelete={deleteEmployee}
+          />
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{currentEmployee ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
+                <DialogDescription>Fill in the details for the employee.</DialogDescription>
+              </DialogHeader>
+              <EmployeeForm
+                employee={currentEmployee}
+                onSave={handleSave}
+                onCancel={() => {
+                  setDialogOpen(false);
+                  setCurrentEmployee(null);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </main>
+
+      <footer className="bg-muted p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} My Company. All rights reserved.
+        </p>
+      </footer>
+    </div>
+  );
+};
+
+export default EmployeeManagement;
